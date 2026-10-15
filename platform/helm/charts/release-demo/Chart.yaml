@@ -1,0 +1,6 @@
+apiVersion: v2
+name: release-demo
+description: KubeForge Helm packaging and release-safety lab
+type: application
+version: 0.1.0
+appVersion: "v1"

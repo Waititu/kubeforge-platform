@@ -1,0 +1,12 @@
+replicaCount: 1
+
+podDisruptionBudget:
+  enabled: false
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 8Mi
+  limits:
+    cpu: 100m
+    memory: 32Mi
