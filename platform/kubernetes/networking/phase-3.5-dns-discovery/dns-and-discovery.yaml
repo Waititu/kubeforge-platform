@@ -1,0 +1,104 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: network-dns-client
+  namespace: kubeforge
+  labels:
+    app.kubernetes.io/name: network-dns-client
+    app.kubernetes.io/part-of: kubeforge-networking-lab
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: network-dns-client
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: network-dns-client
+        app.kubernetes.io/part-of: kubeforge-networking-lab
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 5
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: dns-client
+          image: busybox:1.37.0
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh", "-c", "sleep 2147483"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: network-dns-client-egress
+  namespace: kubeforge
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: network-dns-client
+  policyTypes:
+    - Egress
+  egress:
+    # Permit DNS queries only to the CoreDNS pods in kube-system.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Permit application traffic only to the network-echo pods.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kubeforge
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: network-echo
+      ports:
+        - protocol: TCP
+          port: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: network-echo-ingress-allow-dns-client
+  namespace: kubeforge
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: network-echo
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kubeforge
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: network-dns-client
+      ports:
+        - protocol: TCP
+          port: 8080
