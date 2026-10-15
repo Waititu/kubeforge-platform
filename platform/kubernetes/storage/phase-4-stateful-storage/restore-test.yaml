@@ -1,0 +1,53 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: storage-restore-pvc
+  namespace: kubeforge
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: storage-restore
+  namespace: kubeforge
+  labels:
+    app.kubernetes.io/name: storage-restore
+spec:
+  restartPolicy: Never
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: restore
+      image: busybox:1.37.0
+      imagePullPolicy: IfNotPresent
+      command: ["/bin/sh", "-c", "sleep 2147483"]
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop: ["ALL"]
+      resources:
+        requests:
+          cpu: 50m
+          memory: 64Mi
+        limits:
+          cpu: 100m
+          memory: 128Mi
+      volumeMounts:
+        - name: restore-data
+          mountPath: /restore
+  volumes:
+    - name: restore-data
+      persistentVolumeClaim:
+        claimName: storage-restore-pvc
