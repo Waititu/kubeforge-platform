@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: argo-rollouts-metrics
+  namespace: argo-rollouts
+  labels:
+    app.kubernetes.io/name: argo-rollouts
+    app.kubernetes.io/part-of: kubeforge-platform
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: argo-rollouts
+  ports:
+    - name: metrics
+      port: 8090
+      targetPort: metrics

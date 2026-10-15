@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: kubeforge-observability
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 30s
+      evaluation_interval: 30s
+
+    scrape_configs:
+      - job_name: prometheus
+        static_configs:
+          - targets:
+              - localhost:9090
+
+      - job_name: argo-rollouts
+        static_configs:
+          - targets:
+              - argo-rollouts-metrics.argo-rollouts.svc.cluster.local:8090
+
+      - job_name: ingress-nginx
+        metrics_path: /metrics
+        static_configs:
+          - targets:
+              - ingress-nginx-metrics.ingress-nginx.svc.cluster.local:10254
