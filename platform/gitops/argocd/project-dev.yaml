@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: kubeforge-dev
+  namespace: argocd
+spec:
+  description: KubeForge development GitOps application
+  sourceRepos:
+    - https://github.com/Waititu/kubeforge-platform.git
+  destinations:
+    - namespace: kubeforge-gitops-dev
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist: []
+  namespaceResourceWhitelist:
+    - group: apps
+      kind: Deployment
+    - group: ""
+      kind: Service

@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: release-demo-dev
+  namespace: argocd
+spec:
+  project: kubeforge-dev
+  source:
+    repoURL: https://github.com/Waititu/kubeforge-platform.git
+    targetRevision: main
+    path: platform/gitops/kustomize/release-demo/overlays/dev
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kubeforge-gitops-dev
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: false
+    syncOptions:
+      - CreateNamespace=false
