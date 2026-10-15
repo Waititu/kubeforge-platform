@@ -10,4 +10,4 @@ spec:
         - name: web
           env:
             - name: RELEASE_VERSION
-              value: v1
+              value: v2
