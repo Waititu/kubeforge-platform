@@ -1,0 +1,104 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kubeforge-security-lab
+  labels:
+    app.kubernetes.io/part-of: kubeforge-platform
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+    kubeforge.security/enforce: "true"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: app-reader
+  namespace: kubeforge-security-lab
+  labels:
+    app.kubernetes.io/part-of: kubeforge-platform
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: app-reader
+  namespace: kubeforge-security-lab
+rules:
+  - apiGroups: [""]
+    resources:
+      - pods
+      - services
+    verbs:
+      - get
+      - list
+      - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: app-reader
+  namespace: kubeforge-security-lab
+subjects:
+  - kind: ServiceAccount
+    name: app-reader
+    namespace: kubeforge-security-lab
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: app-reader
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: kubeforge-restricted-pods
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["pods"]
+        scope: Namespaced
+  validations:
+    - expression: >-
+        has(object.spec.securityContext) &&
+        has(object.spec.securityContext.runAsNonRoot) &&
+        object.spec.securityContext.runAsNonRoot == true
+      message: "Pods must set pod-level runAsNonRoot: true."
+    - expression: >-
+        has(object.spec.securityContext.seccompProfile) &&
+        object.spec.securityContext.seccompProfile.type == 'RuntimeDefault'
+      message: "Pods must use the RuntimeDefault seccomp profile."
+    - expression: >-
+        object.spec.containers.all(c,
+          has(c.securityContext) &&
+          c.securityContext.allowPrivilegeEscalation == false &&
+          c.securityContext.readOnlyRootFilesystem == true &&
+          has(c.securityContext.capabilities) &&
+          'ALL' in c.securityContext.capabilities.drop
+        )
+      message: "Every application container must disable privilege escalation, use a read-only root filesystem, and drop ALL Linux capabilities."
+    - expression: >-
+        !has(object.spec.initContainers) ||
+        object.spec.initContainers.all(c,
+          has(c.securityContext) &&
+          c.securityContext.allowPrivilegeEscalation == false &&
+          c.securityContext.readOnlyRootFilesystem == true &&
+          has(c.securityContext.capabilities) &&
+          'ALL' in c.securityContext.capabilities.drop
+        )
+      message: "Every init container must meet the container hardening requirements."
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: kubeforge-restricted-pods
+spec:
+  policyName: kubeforge-restricted-pods
+  validationActions:
+    - Deny
+  matchResources:
+    namespaceSelector:
+      matchLabels:
+        kubeforge.security/enforce: "true"
