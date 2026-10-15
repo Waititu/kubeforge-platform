@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: kubeforge-progressive
+  namespace: argocd
+spec:
+  description: Isolated Argo Rollouts progressive-delivery lab
+  sourceRepos:
+    - https://github.com/Waititu/kubeforge-platform.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: kubeforge-progressive-lab
+  namespaceResourceWhitelist:
+    - group: argoproj.io
+      kind: Rollout
+    - group: ""
+      kind: Service
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace

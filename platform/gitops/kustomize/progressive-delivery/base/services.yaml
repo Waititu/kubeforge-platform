@@ -1,0 +1,44 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: progressive-canary
+  labels:
+    app.kubernetes.io/part-of: kubeforge-progressive-delivery
+spec:
+  type: ClusterIP
+  selector:
+    app: progressive-canary
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: progressive-bluegreen-active
+  labels:
+    app.kubernetes.io/part-of: kubeforge-progressive-delivery
+spec:
+  type: ClusterIP
+  selector:
+    app: progressive-bluegreen
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: progressive-bluegreen-preview
+  labels:
+    app.kubernetes.io/part-of: kubeforge-progressive-delivery
+spec:
+  type: ClusterIP
+  selector:
+    app: progressive-bluegreen
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
