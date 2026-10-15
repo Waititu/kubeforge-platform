@@ -1,0 +1,48 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: network-echo
+  namespace: kubeforge
+  labels:
+    app.kubernetes.io/part-of: kubeforge-platform
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: echo.kubeforge.test
+      http:
+        paths:
+          - path: /route-check
+            pathType: Prefix
+            backend:
+              service:
+                name: network-route-backend
+                port:
+                  number: 80
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: network-echo
+                port:
+                  number: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: path-only
+  namespace: kubeforge
+  labels:
+    app.kubernetes.io/part-of: kubeforge-platform
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: path-only.kubeforge.test
+      http:
+        paths:
+          - path: /route-check
+            pathType: Prefix
+            backend:
+              service:
+                name: network-route-backend
+                port:
+                  number: 80
