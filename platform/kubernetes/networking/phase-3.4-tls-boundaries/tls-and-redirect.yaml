@@ -1,0 +1,124 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: https-redirect
+  namespace: kubeforge
+  labels:
+    app.kubernetes.io/part-of: kubeforge-platform
+spec:
+  redirectScheme:
+    scheme: https
+    port: "30443"
+    permanent: true
+---
+# HTTP routers: redirect requests to the HTTPS NodePort.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: network-echo
+  namespace: kubeforge
+  labels:
+    app.kubernetes.io/part-of: kubeforge-platform
+  annotations:
+    traefik.ingress.kubernetes.io/router.middlewares: kubeforge-https-redirect@kubernetescrd
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: echo.kubeforge.test
+      http:
+        paths:
+          - path: /route-check
+            pathType: Prefix
+            backend:
+              service:
+                name: network-route-backend
+                port:
+                  number: 80
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: network-echo
+                port:
+                  number: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: path-only
+  namespace: kubeforge
+  labels:
+    app.kubernetes.io/part-of: kubeforge-platform
+  annotations:
+    traefik.ingress.kubernetes.io/router.middlewares: kubeforge-https-redirect@kubernetescrd
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: path-only.kubeforge.test
+      http:
+        paths:
+          - path: /route-check
+            pathType: Prefix
+            backend:
+              service:
+                name: network-route-backend
+                port:
+                  number: 80
+---
+# Separate TLS routers keep HTTPS independent of the HTTP redirect routers.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: network-echo-tls
+  namespace: kubeforge
+  labels:
+    app.kubernetes.io/part-of: kubeforge-platform
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - echo.kubeforge.test
+      secretName: kubeforge-lab-tls
+  rules:
+    - host: echo.kubeforge.test
+      http:
+        paths:
+          - path: /route-check
+            pathType: Prefix
+            backend:
+              service:
+                name: network-route-backend
+                port:
+                  number: 80
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: network-echo
+                port:
+                  number: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: path-only-tls
+  namespace: kubeforge
+  labels:
+    app.kubernetes.io/part-of: kubeforge-platform
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - path-only.kubeforge.test
+      secretName: kubeforge-lab-tls
+  rules:
+    - host: path-only.kubeforge.test
+      http:
+        paths:
+          - path: /route-check
+            pathType: Prefix
+            backend:
+              service:
+                name: network-route-backend
+                port:
+                  number: 80
