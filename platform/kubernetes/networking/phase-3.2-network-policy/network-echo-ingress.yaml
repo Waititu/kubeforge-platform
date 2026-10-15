@@ -1,0 +1,19 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: network-echo-ingress-allow-client
+  namespace: kubeforge
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: network-echo
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: network-client
+      ports:
+        - protocol: TCP
+          port: 8080
