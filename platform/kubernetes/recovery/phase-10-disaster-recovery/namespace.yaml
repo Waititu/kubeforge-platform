@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kubeforge-dr-lab
+  labels:
+    app.kubernetes.io/part-of: kubeforge
+    kubeforge.io/phase: "10"
+    kubeforge.io/purpose: disaster-recovery

@@ -1,0 +1,98 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dr-web
+  namespace: kubeforge-dr-lab
+  labels:
+    app.kubernetes.io/name: dr-web
+    app.kubernetes.io/part-of: kubeforge
+    kubeforge.io/phase: "10"
+spec:
+  replicas: 2
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: dr-web
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: dr-web
+        app.kubernetes.io/part-of: kubeforge
+        kubeforge.io/phase: "10"
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        fsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: nginx
+          image: nginx:1.28.0
+          ports:
+            - name: http
+              containerPort: 8080
+          command:
+            - /bin/sh
+            - -c
+            - |
+              printf 'KubeForge Phase 10 recovery lab\n' > /tmp/index.html
+              cat > /tmp/nginx.conf <<'NGINX'
+              pid /tmp/nginx.pid;
+              error_log /dev/stderr notice;
+              events {}
+              http {
+                access_log /dev/stdout;
+                client_body_temp_path /tmp/client_temp;
+                proxy_temp_path /tmp/proxy_temp;
+                fastcgi_temp_path /tmp/fastcgi_temp;
+                uwsgi_temp_path /tmp/uwsgi_temp;
+                scgi_temp_path /tmp/scgi_temp;
+                server {
+                  listen 8080;
+                  server_name _;
+                  location / {
+                    root /tmp;
+                    index index.html;
+                  }
+                }
+              }
+              NGINX
+              exec nginx -g 'daemon off;' -c /tmp/nginx.conf
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 250m
+              memory: 96Mi
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}

@@ -1,0 +1,68 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: dr-data-recovery
+  namespace: kubeforge-dr-lab
+  labels:
+    app.kubernetes.io/part-of: kubeforge
+    kubeforge.io/phase: "10"
+spec:
+  backoffLimit: 1
+  activeDeadlineSeconds: 150
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: dr-data-recovery
+        kubeforge.io/phase: "10"
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: recovery-check
+          image: busybox:1.37.0
+          command:
+            - /bin/sh
+            - -ec
+            - |
+              mkdir -p /primary /backup
+              printf 'kubeforge-phase10-record-v1\n' > /primary/record.txt
+              cp /primary/record.txt /backup/record.txt
+              echo 'Checkpoint 1: backup created.'
+              cmp /primary/record.txt /backup/record.txt
+              rm /primary/record.txt
+              test ! -f /primary/record.txt
+              echo 'Checkpoint 2: simulated primary-file loss.'
+              cp /backup/record.txt /primary/record.txt
+              cmp /primary/record.txt /backup/record.txt
+              grep -qx 'kubeforge-phase10-record-v1' /primary/record.txt
+              echo 'Checkpoint 3: restore verified; content matches backup.'
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+          volumeMounts:
+            - name: primary
+              mountPath: /primary
+            - name: backup
+              mountPath: /backup
+      volumes:
+        - name: primary
+          persistentVolumeClaim:
+            claimName: dr-primary
+        - name: backup
+          persistentVolumeClaim:
+            claimName: dr-backup
