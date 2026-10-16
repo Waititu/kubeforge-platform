@@ -104,5 +104,39 @@ data:
           ],
           "options": {"reduceOptions": {"calcs": ["lastNotNull"], "values": false}}
         }
+        ,
+        {
+          "id": 7,
+          "title": "Deployment desired vs available replicas",
+          "type": "timeseries",
+          "gridPos": {"x": 0, "y": 21, "w": 12, "h": 8},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "targets": [
+            {
+              "expr": "kube_deployment_spec_replicas{namespace=~\"kubeforge|kubeforge-dr-lab|kubeforge-observability|nodegrid|multicloud-platform\"}",
+              "legendFormat": "{{namespace}} / {{deployment}} desired",
+              "refId": "A"
+            },
+            {
+              "expr": "kube_deployment_status_replicas_available{namespace=~\"kubeforge|kubeforge-dr-lab|kubeforge-observability|nodegrid|multicloud-platform\"}",
+              "legendFormat": "{{namespace}} / {{deployment}} available",
+              "refId": "B"
+            }
+          ]
+        },
+        {
+          "id": 8,
+          "title": "Container restarts (last 10 minutes)",
+          "type": "timeseries",
+          "gridPos": {"x": 12, "y": 21, "w": 12, "h": 8},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "targets": [
+            {
+              "expr": "sum by (namespace, pod, container) (increase(kube_pod_container_status_restarts_total{namespace=~\"kubeforge|kubeforge-dr-lab|kubeforge-observability|nodegrid|multicloud-platform\"}[10m]))",
+              "legendFormat": "{{namespace}} / {{pod}} / {{container}}",
+              "refId": "A"
+            }
+          ]
+        }
       ]
     }

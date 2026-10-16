@@ -23,6 +23,11 @@ data:
           - targets:
               - argo-rollouts-metrics.argo-rollouts.svc.cluster.local:8090
 
+      - job_name: kube-state-metrics
+        static_configs:
+          - targets:
+              - kube-state-metrics.kubeforge-observability.svc.cluster.local:8080
+
       - job_name: ingress-nginx
         metrics_path: /metrics
         static_configs:

@@ -58,3 +58,34 @@ data:
             annotations:
               summary: "High ingress p95 request latency"
               description: 'The 95th percentile request latency for {{ $labels.host }} has exceeded 1 second for 5 minutes.'
+
+
+          - alert: KubeForgeDeploymentUnavailable
+            expr: |
+              kube_deployment_spec_replicas{
+                namespace=~"kubeforge|kubeforge-dr-lab|kubeforge-observability|nodegrid|multicloud-platform"
+              }
+              >
+              kube_deployment_status_replicas_available{
+                namespace=~"kubeforge|kubeforge-dr-lab|kubeforge-observability|nodegrid|multicloud-platform"
+              }
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Kubernetes deployment has unavailable replicas"
+              description: 'Deployment {{ $labels.namespace }}/{{ $labels.deployment }} has fewer available replicas than desired.'
+
+          - alert: KubeForgeContainerRestarting
+            expr: |
+              increase(
+                kube_pod_container_status_restarts_total{
+                  namespace=~"kubeforge|kubeforge-dr-lab|kubeforge-observability|nodegrid|multicloud-platform"
+                }[10m]
+              ) > 0
+            for: 2m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Container restarted in a monitored namespace"
+              description: 'Container {{ $labels.container }} in pod {{ $labels.namespace }}/{{ $labels.pod }} has restarted during the last 10 minutes.'

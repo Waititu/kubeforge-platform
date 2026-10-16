@@ -97,3 +97,24 @@ actually reached the relevant ingress.
 - The ingress controller patch can interrupt traffic during recreation.
 - Preserve the existing NodeGrid and Traefik ingress configurations.
 - Do not commit cluster credentials, Secrets, or generated runtime data.
+
+## Phase 11 — Kubernetes observability
+
+### Capabilities
+- Prometheus metrics collection and scrape-target health monitoring.
+- Grafana platform overview dashboard with eight panels.
+- Kubernetes deployment desired-versus-available replica metrics.
+- Container restart monitoring over a ten-minute window.
+- Alerts for unavailable deployments and restarting containers.
+- Read-only kube-state-metrics RBAC permissions.
+- Resource-bounded workloads suitable for a local development cluster.
+
+### Verification
+- Repository YAML, Kustomize, Helm, and security-policy validation passed.
+- Embedded Grafana dashboard JSON parsed successfully with eight unique panel IDs.
+- Live cluster readiness, Prometheus targets, alert states, and dashboard rendering should be verified after deployment.
+
+### Operational notes
+- Prometheus and Grafana use local-cluster resources; cloud charges are not required.
+- Review alert state and workload health before treating an alert as a monitoring defect.
+- Dashboard and metric history may be lost when ephemeral storage is recreated.

@@ -5,6 +5,8 @@ resources:
   - namespace.yaml
   - configmap.yaml
   - alert-rules.yaml
+  - kube-state-metrics/rbac.yaml
+  - kube-state-metrics/deployment.yaml
   - rollout-metrics-service.yaml
   - ingress-nginx-metrics-service.yaml
   - deployment.yaml
