@@ -29,3 +29,31 @@ application.
 KubeForge must remain isolated from existing NodeGrid and
 multicloud-platform workloads. Never perform destructive cluster-wide
 operations as part of routine project development.
+
+## Local validation and CI
+
+KubeForge's validation workflow checks YAML syntax, renders every
+tracked Kustomize root, lints and renders Helm charts, validates
+rendered Kubernetes resources against schemas, and applies a
+production-focused security policy to the release-demo production
+overlay.
+
+The checks are validation-only. They do not run `kubectl apply`,
+connect to the cluster, or create cloud resources. Custom resources
+whose schemas are not available to Kubeconform are skipped by the
+schema check; YAML syntax and Kustomize rendering still apply.
+
+### Prerequisites
+
+- Git
+- Python 3 and pip
+- `kubectl`
+- Helm
+- Kubeconform
+
+On macOS with Homebrew:
+
+```bash
+brew install kubeconform
+python3 -m venv /tmp/kubeforge-ci-venv
+/tmp/kubeforge-ci-venv/bin/python -m pip install PyYAML==6.0.2

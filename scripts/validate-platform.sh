@@ -5,23 +5,19 @@ ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
 
 YAML_PYTHON="${YAML_PYTHON:-python3}"
+TEMP_DIR="$(mktemp -d)"
+trap 'rm -rf "$TEMP_DIR"' EXIT
 
-for tool in kubectl helm find; do
+for tool in kubectl helm kubeconform find; do
   if ! command -v "$tool" >/dev/null 2>&1; then
     echo "ERROR: Required tool not found: $tool" >&2
+    echo "See README.md for local prerequisites." >&2
     exit 1
   fi
 done
 
 if ! "$YAML_PYTHON" -c 'import yaml' >/dev/null 2>&1; then
-  cat >&2 <<'MSG'
-ERROR: PyYAML is required for YAML syntax validation.
-
-Create a temporary virtual environment and install it:
-  python3 -m venv /tmp/kubeforge-ci-venv
-  /tmp/kubeforge-ci-venv/bin/python -m pip install PyYAML==6.0.2
-  YAML_PYTHON=/tmp/kubeforge-ci-venv/bin/python ./scripts/validate-platform.sh
-MSG
+  echo "ERROR: PyYAML is required. See README.md." >&2
   exit 1
 fi
 
@@ -61,13 +57,22 @@ print(f"PASS: {len(files)} YAML files parsed")
 PY
 
 echo
-echo "========== 2. KUSTOMIZE RENDERING =========="
+echo "========== 2. KUSTOMIZE + SCHEMA VALIDATION =========="
 kustomize_count=0
 
 while IFS= read -r -d '' file; do
   dir="${file%/*}"
+  output="$TEMP_DIR/kustomize-${kustomize_count}.yaml"
+
   echo "Rendering: $dir"
-  kubectl kustomize "$dir" >/dev/null
+  kubectl kustomize "$dir" > "$output"
+
+  kubeconform \
+    -strict \
+    -ignore-missing-schemas \
+    -summary \
+    "$output"
+
   echo "PASS: $dir"
   kustomize_count=$((kustomize_count + 1))
 done < <(find platform -name kustomization.yaml -type f -print0 | sort -z)
@@ -80,25 +85,37 @@ fi
 echo "PASS: $kustomize_count Kustomize root(s)"
 
 echo
-echo "========== 3. HELM CHART VALIDATION =========="
+echo "========== 3. HELM + SCHEMA VALIDATION =========="
 chart_count=0
 
 while IFS= read -r -d '' chart_file; do
   chart_dir="${chart_file%/*}"
   echo "Chart: $chart_dir"
 
-  helm lint "$chart_dir" -f "$chart_dir/values-dev.yaml"
-  helm lint "$chart_dir" -f "$chart_dir/values-prod.yaml"
+  for environment in dev prod; do
+    values_file="$chart_dir/values-${environment}.yaml"
+    rendered="$TEMP_DIR/helm-${chart_count}-${environment}.yaml"
 
-  helm template release-demo "$chart_dir" \
-    --namespace kubeforge-helm-lab \
-    -f "$chart_dir/values-dev.yaml" >/dev/null
+    if [ ! -f "$values_file" ]; then
+      echo "ERROR: Missing values file: $values_file" >&2
+      exit 1
+    fi
 
-  helm template release-demo "$chart_dir" \
-    --namespace kubeforge-helm-lab \
-    -f "$chart_dir/values-prod.yaml" >/dev/null
+    helm lint "$chart_dir" -f "$values_file"
 
-  echo "PASS: Helm lint and template rendering"
+    helm template release-demo "$chart_dir" \
+      --namespace kubeforge-helm-lab \
+      -f "$values_file" > "$rendered"
+
+    kubeconform \
+      -strict \
+      -ignore-missing-schemas \
+      -summary \
+      "$rendered"
+
+    echo "PASS: Helm $environment rendering and schemas"
+  done
+
   chart_count=$((chart_count + 1))
 done < <(find platform -name Chart.yaml -type f -print0 | sort -z)
 
@@ -108,6 +125,20 @@ if [ "$chart_count" -eq 0 ]; then
 fi
 
 echo "PASS: $chart_count Helm chart(s)"
+
+echo
+echo "========== 4. PRODUCTION SECURITY POLICY =========="
+prod_render="$TEMP_DIR/production-overlay.yaml"
+
+kubectl kustomize \
+  platform/gitops/kustomize/release-demo/overlays/prod \
+  > "$prod_render"
+
+"$YAML_PYTHON" scripts/check-production-policy.py "$prod_render"
+
+echo
+echo "========== 5. POLICY NEGATIVE TEST =========="
+"$YAML_PYTHON" scripts/check-production-policy.py --self-test
 
 echo
 echo "========== VALIDATION SUCCEEDED =========="
