@@ -1,0 +1,18 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  namespace: kubeforge-observability
+spec:
+  template:
+    spec:
+      containers:
+        - name: prometheus
+          volumeMounts:
+            - name: rules
+              mountPath: /etc/prometheus/rules
+              readOnly: true
+      volumes:
+        - name: rules
+          configMap:
+            name: prometheus-alert-rules

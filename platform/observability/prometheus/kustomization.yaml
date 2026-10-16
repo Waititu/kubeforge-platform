@@ -1,9 +1,18 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
+
 resources:
   - namespace.yaml
   - configmap.yaml
+  - alert-rules.yaml
   - rollout-metrics-service.yaml
   - ingress-nginx-metrics-service.yaml
   - deployment.yaml
   - service.yaml
+  - grafana/provisioning.yaml
+  - grafana/dashboard.yaml
+  - grafana/deployment.yaml
+  - grafana/service.yaml
+
+patches:
+  - path: prometheus-rule-mount-patch.yaml
